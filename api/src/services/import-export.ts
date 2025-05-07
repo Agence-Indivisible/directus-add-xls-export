@@ -608,7 +608,25 @@ Your export of ${collection} is ready. <a href="${href}">Click here to view.</a>
 		}
 
 		if (format === 'xls') {
-			const worksheet = xlsxUtils.json_to_sheet(input);
+			// Flatten nested objects similar to CSV export
+			const flattenedData = input.map(item => {
+				const flattened: Record<string, any> = {};
+
+				const flatten = (obj: Record<string, any>, prefix = '') => {
+					for (const key in obj) {
+						if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+							flatten(obj[key], prefix ? `${prefix}.${key}` : key);
+						} else {
+							flattened[prefix ? `${prefix}.${key}` : key] = obj[key];
+						}
+					}
+				};
+
+				flatten(item);
+				return flattened;
+			});
+
+			const worksheet = xlsxUtils.json_to_sheet(flattenedData);
 			const workbook = xlsxUtils.book_new();
 			xlsxUtils.book_append_sheet(workbook, worksheet, 'Sheet1');
 			return xlsxWrite(workbook, { type: 'buffer', bookType: 'xls' });
