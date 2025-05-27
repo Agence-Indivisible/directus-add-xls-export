@@ -614,7 +614,10 @@ Your export of ${collection} is ready. <a href="${href}">Click here to view.</a>
 
 				const flatten = (obj: Record<string, any>, prefix = '') => {
 					for (const key in obj) {
-						if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+						if (Array.isArray(obj[key])) {
+							// For arrays (M2M, O2M relationships), show the count
+							flattened[prefix ? `${prefix}.${key}` : key] = `${obj[key].length} items`;
+						} else if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
 							flatten(obj[key], prefix ? `${prefix}.${key}` : key);
 						} else {
 							flattened[prefix ? `${prefix}.${key}` : key] = obj[key];
