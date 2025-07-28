@@ -448,7 +448,7 @@ export class ExportService {
 					if (result.length) {
 						let csvHeadings = null;
 
-						if (format === 'csv') {
+						if (format === 'csv' || format === 'xls') {
 							if (!query.fields) query.fields = ['*'];
 
 							// to ensure the all headings are included in the CSV file, all possible fields need to be determined.
@@ -611,15 +611,35 @@ Your export of ${collection} is ready. <a href="${href}">Click here to view.</a>
 		}
 
 		if (format === 'xls') {
-			// Flatten nested objects similar to CSV export
 			const flattenedData = input.map(item => {
 				const flattened: Record<string, any> = {};
 
 				const flatten = (obj: Record<string, any>, prefix = '') => {
 					for (const key in obj) {
 						if (Array.isArray(obj[key])) {
-							// For arrays (M2M, O2M relationships), show the count
-							flattened[prefix ? `${prefix}.${key}` : key] = `${obj[key].length} items`;
+							if (obj[key].length > 0 && typeof obj[key][0] === 'object' && obj[key][0] !== null) {
+								const values = obj[key].map((item: any) => {
+									const simpleValues: string[] = [];
+
+									const extractValues = (obj: any, prefix = '') => {
+										for (const [key, value] of Object.entries(obj)) {
+											if (typeof value === 'string' || typeof value === 'number') {
+												simpleValues.push(String(value));
+											} else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+												extractValues(value, prefix ? `${prefix}.${key}` : key);
+											}
+										}
+									};
+
+									extractValues(item);
+
+									return simpleValues.length > 0 ? simpleValues.join(', ') : JSON.stringify(item);
+								});
+
+								flattened[prefix ? `${prefix}.${key}` : key] = values.join(' - ');
+							} else {
+								flattened[prefix ? `${prefix}.${key}` : key] = JSON.stringify(obj[key]);
+							}
 						} else if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
 							flatten(obj[key], prefix ? `${prefix}.${key}` : key);
 						} else {
