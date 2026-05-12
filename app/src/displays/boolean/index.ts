@@ -1,4 +1,6 @@
+import { i18n } from '@/lang';
 import { defineDisplay } from '@directus/extensions';
+import { translate } from '@/utils/translate-literal';
 import DisplayBoolean from './boolean.vue';
 
 export default defineDisplay({
@@ -8,6 +10,20 @@ export default defineDisplay({
 	types: ['boolean'],
 	icon: 'check_box',
 	component: DisplayBoolean,
+	handler: (value, options) => {
+		if (value === null || value === undefined) {
+			return value;
+		}
+
+		const rawOn = options.labelOn ?? null;
+		const rawOff = options.labelOff ?? null;
+
+		if (rawOn !== null && rawOff !== null) {
+			return value ? translate(rawOn) : translate(rawOff);
+		}
+
+		return value ? i18n.global.t('enabled') : i18n.global.t('disabled');
+	},
 	options: [
 		{
 			field: 'labelOn',
