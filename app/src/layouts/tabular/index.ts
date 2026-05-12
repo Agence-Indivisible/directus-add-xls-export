@@ -6,7 +6,7 @@ import { adjustFieldsForDisplays } from '@/utils/adjust-fields-for-displays';
 import { formatItemsCountPaginated } from '@/utils/format-items-count';
 import { getDefaultDisplayForType } from '@/utils/get-default-display-for-type';
 import { hideDragImage } from '@/utils/hide-drag-image';
-import { saveAsCSV } from '@/utils/save-as-csv';
+import { saveAsXLSX } from '@/utils/save-as-xlsx';
 import { syncRefProperty } from '@/utils/sync-ref-property';
 import { useCollection, useItems, useSync } from '@directus/composables';
 import { defineLayout } from '@directus/extensions';
@@ -141,7 +141,7 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 
 		function download() {
 			if (!collection.value) return;
-			saveAsCSV(collection.value, fields.value, items.value);
+			saveAsXLSX(collection.value, fields.value, items.value);
 		}
 
 		function toPage(newPage: number) {

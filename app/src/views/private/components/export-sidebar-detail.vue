@@ -426,20 +426,17 @@ async function exportDataFiles() {
 			</template>
 
 			<div class="field full">
-				<v-button small full-width @click="openExportDialog">
+				<!-- <v-button small full-width @click="openExportDialog">
 					{{ t('export_items') }}
-				</v-button>
+				</v-button> -->
 
-				<button
-					v-tooltip.bottom="
-						!!onDownload ? t('presentation_text_values_cannot_be_reimported') : t('download_page_as_csv_unsupported')
-					"
-					class="download-local"
+				<v-button
+					small full-width
 					:disabled="!onDownload"
 					@click="onDownload"
 				>
-					{{ t('download_page_as_csv') }}
-				</button>
+					Télécharger la page en XLS
+				</v-button>
 			</div>
 		</div>
 

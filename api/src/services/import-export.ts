@@ -466,6 +466,7 @@ export class ExportService {
 								},
 							);
 
+							// TODO : Get field translations from the database
 							csvHeadings = getHeadingsForCsvExport(parsedFields);
 						}
 
