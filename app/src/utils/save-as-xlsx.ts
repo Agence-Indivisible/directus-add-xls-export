@@ -1,10 +1,71 @@
 import { useAliasFields } from '@/composables/use-alias-fields';
 import { useExtension } from '@/composables/use-extension';
 import { useFieldsStore } from '@/stores/fields';
+import { getRelatedCollection } from '@/utils/get-related-collection';
+import { renderDisplayStringTemplate } from '@/utils/render-string-template';
 import type { Field, Item } from '@directus/types';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import { computed } from 'vue';
+
+function formatRelatedArrayForExport(collection: string, field: Field, value: Record<string, any>[]) {
+	const relatedCollections = getRelatedCollection(collection, field.field);
+	if (!relatedCollections) return value.map((item) => JSON.stringify(item)).join(', ');
+
+	const fieldsStore = useFieldsStore();
+	const targetCollection = relatedCollections.junctionCollection ?? relatedCollections.relatedCollection;
+	const template =
+		field.meta?.display_options?.template ??
+		(() => {
+			const primaryKeyField = fieldsStore.getPrimaryKeyFieldForCollection(relatedCollections.relatedCollection);
+			const primaryKeyFieldPath = relatedCollections.path
+				? [...relatedCollections.path, primaryKeyField?.field].join('.')
+				: primaryKeyField?.field;
+
+			return primaryKeyFieldPath ? `{{ ${primaryKeyFieldPath} }}` : null;
+		})();
+
+	if (!template) return value.map((item) => JSON.stringify(item)).join(', ');
+
+	return value
+		.map((item) => renderDisplayStringTemplate(targetCollection, template, item))
+		.filter((item) => item !== null && item !== undefined && item !== '')
+		.join(', ');
+}
+
+async function formatFieldValueForExport(collection: string, field: Field | null, value: unknown) {
+	if (value === undefined || value === null) return value;
+
+	if (Array.isArray(value)) {
+		if (field && getRelatedCollection(collection, field.field)) {
+			return formatRelatedArrayForExport(collection, field, value as Record<string, any>[]);
+		}
+
+		const formattedValues = await Promise.all(value.map((item) => formatFieldValueForExport(collection, field, item)));
+
+		return formattedValues
+			.filter((item) => item !== null && item !== undefined && item !== '')
+			.map((item) => (typeof item === 'object' ? JSON.stringify(item) : item))
+			.join(', ');
+	}
+
+	const display = useExtension(
+		'display',
+		computed(() => field?.meta?.display ?? null),
+	);
+
+	if (display.value?.handler) {
+		const result = display.value.handler(value, field?.meta?.display_options ?? {}, {
+			interfaceOptions: field?.meta?.options ?? {},
+			field: field ?? undefined,
+			collection,
+		});
+
+		return result instanceof Promise ? await result : result;
+	}
+
+	return value;
+}
 
 export async function saveAsXLSX(collection: string, fields: string[], items: Item[]) {
 	const fieldsStore = useFieldsStore();
@@ -41,19 +102,7 @@ export async function saveAsXLSX(collection: string, fields: string[], items: It
 
 			const value = getFromAliasedItem(item, key);
 
-			const display = useExtension(
-				'display',
-				computed(() => fieldsUsed[key]?.meta?.display ?? null),
-			);
-
-			parsedItem[name] =
-				value !== undefined && value !== null && display.value?.handler
-					? await display.value.handler(value, fieldsUsed[key]?.meta?.display_options ?? {}, {
-							interfaceOptions: fieldsUsed[key]?.meta?.options ?? {},
-							field: fieldsUsed[key] ?? undefined,
-							collection,
-					  })
-					: value;
+			parsedItem[name] = await formatFieldValueForExport(collection, fieldsUsed[key], value);
 		}
 
 		parsedItems.push(parsedItem);
