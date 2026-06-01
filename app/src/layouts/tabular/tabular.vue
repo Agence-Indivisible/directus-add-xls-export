@@ -5,6 +5,7 @@ import { usePageSize } from '@/composables/use-page-size';
 import { useCollectionPermissions } from '@/composables/use-permissions';
 import { useShortcut } from '@/composables/use-shortcut';
 import { Collection } from '@/types/collections';
+import TabularCellValue from './tabular-cell-value.vue';
 import { useSync } from '@directus/composables';
 import type { ShowSelect } from '@directus/extensions';
 import type { Field, Filter, Item } from '@directus/types';
@@ -136,16 +137,7 @@ function removeField(fieldKey: string) {
 			@manual-sort="changeManualSort"
 		>
 			<template v-for="header in tableHeaders" :key="header.value" #[`item.${header.value}`]="{ item }">
-				<render-display
-					:value="getFromAliasedItem(item, header.value)"
-					:display="header.field.display"
-					:options="header.field.displayOptions"
-					:interface="header.field.interface"
-					:interface-options="header.field.interfaceOptions"
-					:type="header.field.type"
-					:collection="header.field.collection"
-					:field="header.field.field"
-				/>
+				<tabular-cell-value :item="item" :header="header" :get-from-aliased-item="getFromAliasedItem" />
 			</template>
 
 			<template #header-context-menu="{ header }">
