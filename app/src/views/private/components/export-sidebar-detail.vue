@@ -225,6 +225,19 @@ const sortField = computed({
 });
 
 const exporting = ref(false);
+const downloading = ref(false);
+
+async function downloadXls() {
+	if (!props.onDownload || downloading.value) return;
+
+	downloading.value = true;
+
+	try {
+		await props.onDownload();
+	} finally {
+		downloading.value = false;
+	}
+}
 
 async function openExportDialog() {
 	itemCountTotal.value = await getItemCount();
@@ -433,9 +446,10 @@ async function exportDataFiles() {
 				<v-button
 					small full-width
 					:disabled="!onDownload"
-					@click="onDownload"
+					:loading="downloading"
+					@click="downloadXls"
 				>
-					Télécharger la page en XLS
+					Télécharger en XLS
 				</v-button>
 			</div>
 		</div>
