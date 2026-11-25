@@ -3,14 +3,17 @@ import { useAliasFields } from '@/composables/use-alias-fields';
 import { useLayoutClickHandler } from '@/composables/use-layout-click-handler';
 import { useFieldsStore } from '@/stores/fields';
 import { adjustFieldsForDisplays } from '@/utils/adjust-fields-for-displays';
+import { fetchAll } from '@/utils/fetch-all';
 import { formatItemsCountPaginated } from '@/utils/format-items-count';
 import { getDefaultDisplayForType } from '@/utils/get-default-display-for-type';
 import { hideDragImage } from '@/utils/hide-drag-image';
 import { saveAsXLSX } from '@/utils/save-as-xlsx';
 import { syncRefProperty } from '@/utils/sync-ref-property';
+import { unexpectedError } from '@/utils/unexpected-error';
 import { useCollection, useItems, useSync } from '@directus/composables';
 import { defineLayout } from '@directus/extensions';
-import { Field } from '@directus/types';
+import { Field, Item } from '@directus/types';
+import { getEndpoint } from '@directus/utils';
 import { debounce, flatten } from 'lodash';
 import { computed, ref, toRefs, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -139,9 +142,35 @@ export default defineLayout<LayoutOptions, LayoutQuery>({
 			getItemCount();
 		}
 
-		function download() {
+		async function download() {
 			if (!collection.value) return;
-			saveAsXLSX(collection.value, fields.value, items.value);
+
+			try {
+				// The table only holds the current page. The file must contain every row
+				// that matches the same filter, search and sort.
+				const primaryKey = primaryKeyField.value?.field;
+				let fieldsToFetch = [...fieldsWithRelationalAliased.value];
+
+				if (primaryKey && !fieldsToFetch.includes('*') && !fieldsToFetch.includes(primaryKey)) {
+					fieldsToFetch.push(primaryKey);
+				}
+
+				fieldsToFetch = fieldsToFetch.filter((field) => field.startsWith('$') === false);
+
+				const allItems = await fetchAll<Item>(getEndpoint(collection.value), {
+					params: {
+						fields: fieldsToFetch,
+						alias: aliasQuery.value,
+						sort: sort.value,
+						search: search.value,
+						filter: filter.value,
+					},
+				});
+
+				await saveAsXLSX(collection.value, fields.value, allItems);
+			} catch (error) {
+				unexpectedError(error);
+			}
 		}
 
 		function toPage(newPage: number) {
